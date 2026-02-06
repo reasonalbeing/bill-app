@@ -6,5 +6,6 @@
 export { default as useDatabase } from './useDatabase';
 export { default as useTransactions } from './useTransactions';
 export { default as useCategories } from './useCategories';
+export { default as useBudgets } from './useBudgets';
 
 // 可以在这里添加更多的hooks导出
