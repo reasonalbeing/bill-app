@@ -7,7 +7,7 @@ import TransactionRepository from '../repositories/TransactionRepository';
  * 用于管理预算数据的增删改查及预算使用情况计算
  */
 export const useBudgets = (userId) => {
-  const [budgets, setBudgets] = useState([];
+  const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 

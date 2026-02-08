@@ -1,6 +1,11 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useBudgets, useCategories, useDatabase, useTransactions } from '../index';
-import Database from '../database/database';
+import BudgetRepository from '../../repositories/BudgetRepository';
+import TransactionRepository from '../../repositories/TransactionRepository';
+
+// Mock repositories
+jest.mock('../../repositories/BudgetRepository');
+jest.mock('../../repositories/TransactionRepository');
 
 // Mock dependencies
 jest.mock('../database/database');
@@ -187,43 +192,44 @@ describe('hooks', () => {
   });
 
   describe('useBudgets', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     test('should fetch budgets successfully', async () => {
       const mockBudgets = [
         { id: 1, category_id: 1, amount: 1000, start_date: '2024-01-01', end_date: '2024-01-31' },
       ];
       
-      mockDatabase.executeSql.mockResolvedValue({
-        rows: {
-          length: 1,
-          item: jest.fn(() => mockBudgets[0]),
-        },
-      });
+      BudgetRepository.getByUserId.mockResolvedValue(mockBudgets);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
       
-      const { result, waitForNextUpdate } = renderHook(() => useBudgets());
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
       
       expect(result.current.budgets).toEqual([]);
-      expect(result.current.isLoading).toBe(true);
+      expect(result.current.loading).toBe(true);
       
       await waitForNextUpdate();
       
-      expect(result.current.budgets).toEqual(mockBudgets);
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.budgets).toHaveLength(1);
+      expect(result.current.loading).toBe(false);
       expect(result.current.error).toBe(null);
+      expect(BudgetRepository.getByUserId).toHaveBeenCalledWith('user123');
     });
 
     test('should handle fetch budgets error', async () => {
-      mockDatabase.executeSql.mockRejectedValue(new Error('Fetch budgets error'));
+      BudgetRepository.getByUserId.mockRejectedValue(new Error('Fetch budgets error'));
       
-      const { result, waitForNextUpdate } = renderHook(() => useBudgets());
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
       
       await waitForNextUpdate();
       
       expect(result.current.budgets).toEqual([]);
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.loading).toBe(false);
       expect(result.current.error).toBe('Fetch budgets error');
     });
 
-    test('should add budget successfully', async () => {
+    test('should create budget successfully', async () => {
       const initialBudgets = [];
       const newBudget = {
         category_id: 1,
@@ -232,62 +238,50 @@ describe('hooks', () => {
         end_date: '2024-01-31',
       };
       
-      // Mock initial fetch
-      mockDatabase.executeSql
-        .mockResolvedValueOnce({
-          rows: { length: 0 },
-        })
-        .mockResolvedValueOnce({ insertId: 1 });
+      BudgetRepository.getByUserId.mockResolvedValue([]);
+      BudgetRepository.create.mockResolvedValue(1);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
       
-      const { result, waitForNextUpdate } = renderHook(() => useBudgets());
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
       
       await waitForNextUpdate();
       
-      // Add budget
-      await act(async () => {
-        await result.current.addBudget(newBudget);
+      // Create budget
+      const createResult = await act(async () => {
+        return await result.current.createBudget(newBudget);
       });
       
-      await waitForNextUpdate();
-      
-      expect(result.current.budgets).toHaveLength(1);
-      expect(result.current.budgets[0].id).toBe(1);
-      expect(result.current.budgets[0].amount).toBe(1000);
+      expect(createResult.success).toBe(true);
+      expect(createResult.id).toBe(1);
+      expect(BudgetRepository.create).toHaveBeenCalledWith({
+        ...newBudget,
+        user_id: 'user123',
+      });
     });
 
     test('should update budget successfully', async () => {
       const initialBudgets = [
         { id: 1, category_id: 1, amount: 1000, start_date: '2024-01-01', end_date: '2024-01-31' },
       ];
-      const updatedBudget = {
-        id: 1,
-        category_id: 1,
+      const updateData = {
         amount: 1500,
-        start_date: '2024-01-01',
-        end_date: '2024-01-31',
       };
       
-      // Mock initial fetch
-      mockDatabase.executeSql
-        .mockResolvedValueOnce({
-          rows: {
-            length: 1,
-            item: jest.fn(() => initialBudgets[0]),
-          },
-        });
+      BudgetRepository.getByUserId.mockResolvedValue(initialBudgets);
+      BudgetRepository.update.mockResolvedValue(true);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
       
-      const { result, waitForNextUpdate } = renderHook(() => useBudgets());
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
       
       await waitForNextUpdate();
       
       // Update budget
-      await act(async () => {
-        await result.current.updateBudget(updatedBudget);
+      const updateResult = await act(async () => {
+        return await result.current.updateBudget(1, updateData);
       });
       
-      await waitForNextUpdate();
-      
-      expect(result.current.budgets[0].amount).toBe(1500);
+      expect(updateResult.success).toBe(true);
+      expect(BudgetRepository.update).toHaveBeenCalledWith(1, updateData);
     });
 
     test('should delete budget successfully', async () => {
@@ -295,27 +289,113 @@ describe('hooks', () => {
         { id: 1, category_id: 1, amount: 1000, start_date: '2024-01-01', end_date: '2024-01-31' },
       ];
       
-      // Mock initial fetch
-      mockDatabase.executeSql
-        .mockResolvedValueOnce({
-          rows: {
-            length: 1,
-            item: jest.fn(() => initialBudgets[0]),
-          },
-        });
+      BudgetRepository.getByUserId.mockResolvedValue(initialBudgets);
+      BudgetRepository.delete.mockResolvedValue(true);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
       
-      const { result, waitForNextUpdate } = renderHook(() => useBudgets());
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
       
       await waitForNextUpdate();
       
       // Delete budget
-      await act(async () => {
-        await result.current.deleteBudget(1);
+      const deleteResult = await act(async () => {
+        return await result.current.deleteBudget(1);
       });
+      
+      expect(deleteResult.success).toBe(true);
+      expect(BudgetRepository.delete).toHaveBeenCalledWith(1);
+    });
+
+    test('should transfer surplus successfully', async () => {
+      const initialBudgets = [
+        {
+          id: 1,
+          category_id: 1,
+          amount: 1000,
+          start_date: '2024-01-01',
+          end_date: '2024-01-31',
+          recurring: 'monthly',
+          spent: 500,
+          remaining: 500,
+          surplus: 500,
+        },
+      ];
+      
+      BudgetRepository.getByUserId.mockResolvedValue(initialBudgets);
+      BudgetRepository.create.mockResolvedValue(2);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
+      
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
       
       await waitForNextUpdate();
       
-      expect(result.current.budgets).toEqual([]);
+      // Transfer surplus
+      const transferResult = await act(async () => {
+        return await result.current.transferSurplus(1, 200);
+      });
+      
+      expect(transferResult.success).toBe(true);
+      expect(transferResult.newBudgetId).toBe(2);
+      expect(BudgetRepository.create).toHaveBeenCalledWith({
+        user_id: 'user123',
+        amount: 1200, // 1000 + 200
+        category_id: 1,
+        start_date: expect.any(String),
+        end_date: expect.any(String),
+        recurring: 'monthly',
+        custom_recurring: undefined,
+        description: ' (含转入盈余 ¥200.00)',
+      });
+    });
+
+    test('should handle transfer surplus error for non-existent budget', async () => {
+      const initialBudgets = [];
+      
+      BudgetRepository.getByUserId.mockResolvedValue(initialBudgets);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
+      
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
+      
+      await waitForNextUpdate();
+      
+      // Transfer surplus for non-existent budget
+      const transferResult = await act(async () => {
+        return await result.current.transferSurplus(999, 100);
+      });
+      
+      expect(transferResult.success).toBe(false);
+      expect(transferResult.error).toBe('预算不存在');
+    });
+
+    test('should handle transfer surplus error for invalid amount', async () => {
+      const initialBudgets = [
+        {
+          id: 1,
+          category_id: 1,
+          amount: 1000,
+          start_date: '2024-01-01',
+          end_date: '2024-01-31',
+          recurring: 'monthly',
+          spent: 500,
+          remaining: 500,
+          surplus: 500,
+        },
+      ];
+      
+      BudgetRepository.getByUserId.mockResolvedValue(initialBudgets);
+      TransactionRepository.getByUserId.mockResolvedValue([]);
+      
+      const { result, waitForNextUpdate } = renderHook(() => useBudgets('user123'));
+      
+      await waitForNextUpdate();
+      
+      // Transfer surplus with invalid amount
+      const transferResult = await act(async () => {
+        return await result.current.transferSurplus(1, 600); // 超过盈余金额
+      });
+      
+      expect(transferResult.success).toBe(false);
+      expect(transferResult.error).toBe('无效的转入金额');
     });
   });
 
