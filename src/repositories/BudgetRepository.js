@@ -240,6 +240,27 @@ class BudgetRepository extends BaseRepository {
         newStartDate = new Date(startDate.setFullYear(startDate.getFullYear() + 1));
         newEndDate = new Date(endDate.setFullYear(endDate.getFullYear() + 1));
         break;
+      case 'custom':
+        // 自定义预算：根据设置的频率计算
+        if (!budget.custom_recurring) return null;
+        const { frequency, interval } = budget.custom_recurring;
+        switch (frequency) {
+          case 'daily':
+            newStartDate = new Date(startDate.setDate(startDate.getDate() + interval));
+            newEndDate = new Date(endDate.setDate(endDate.getDate() + interval));
+            break;
+          case 'weekly':
+            newStartDate = new Date(startDate.setDate(startDate.getDate() + (interval * 7)));
+            newEndDate = new Date(endDate.setDate(endDate.getDate() + (interval * 7)));
+            break;
+          case 'monthly':
+            newStartDate = new Date(startDate.setMonth(startDate.getMonth() + interval));
+            newEndDate = new Date(endDate.setMonth(endDate.getMonth() + interval));
+            break;
+          default:
+            return null;
+        }
+        break;
       default:
         return null;
     }
@@ -251,6 +272,7 @@ class BudgetRepository extends BaseRepository {
       start_date: newStartDate.toISOString().split('T')[0],
       end_date: newEndDate.toISOString().split('T')[0],
       recurring: budget.recurring,
+      custom_recurring: budget.custom_recurring,
       description: budget.description,
     });
 
