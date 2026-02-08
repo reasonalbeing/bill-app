@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import { useBudgets, useCategories, useDatabase, useTransactions } from '../index';
 import BudgetRepository from '../../repositories/BudgetRepository';
 import TransactionRepository from '../../repositories/TransactionRepository';
@@ -8,9 +8,9 @@ jest.mock('../../repositories/BudgetRepository');
 jest.mock('../../repositories/TransactionRepository');
 
 // Mock dependencies
-jest.mock('../database/database');
+jest.mock('../../config/database');
 
-const mockDatabase = Database;
+const mockDatabase = require('../../config/database');
 
 describe('hooks', () => {
   beforeEach(() => {

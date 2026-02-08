@@ -16,11 +16,20 @@ jest.mock('firebase/auth', () => ({
   onAuthStateChanged: jest.fn(),
 }));
 
-jest.mock('../config/firebase', () => ({
-  auth: {
+jest.mock('../../config/firebase', () => {
+  const mockAuth = {
     currentUser: null,
-  },
-}));
+    createUserWithEmailAndPassword: jest.fn(),
+    signInWithEmailAndPassword: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
+    signOut: jest.fn(),
+    onAuthStateChanged: jest.fn(),
+  };
+  return {
+    getAuth: jest.fn(() => mockAuth),
+    auth: mockAuth,
+  };
+});
 
 import {
   createUserWithEmailAndPassword,
@@ -29,7 +38,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth } from '../../config/firebase';
 
 describe('authService', () => {
   beforeEach(() => {

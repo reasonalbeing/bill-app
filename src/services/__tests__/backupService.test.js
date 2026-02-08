@@ -8,11 +8,11 @@ import { Platform } from 'react-native';
 jest.mock('expo-file-system');
 jest.mock('expo-sharing');
 jest.mock('expo-document-picker');
-jest.mock('../database/database', () => ({
+jest.mock('../../config/database', () => ({
   getDatabase: jest.fn(),
 }));
 
-const mockGetDatabase = require('../database/database').getDatabase;
+const mockGetDatabase = require('../../config/database').getDatabase;
 
 describe('backupService', () => {
   beforeEach(() => {

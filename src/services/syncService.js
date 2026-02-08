@@ -158,4 +158,4 @@ const syncCategoriesToCloud = async (userId, onProgress) => {
     const batch = writeBatch(db);
     const categoriesRef = collection(db, 'users', userId, 'categories');
 
-    for (let i = 0; i < result.rows.length
+    for (let i = 0; i < result.rows.length;

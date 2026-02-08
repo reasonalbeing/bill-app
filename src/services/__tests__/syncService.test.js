@@ -6,7 +6,7 @@ import Database from '../../database/database';
 // Mock dependencies
 jest.mock('firebase/firestore');
 jest.mock('firebase/auth');
-jest.mock('../../database/database');
+jest.mock('../../config/database');
 jest.mock('../../config/firebase', () => ({
   app: {},
 }));
