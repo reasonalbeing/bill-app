@@ -7,7 +7,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "记账",
@@ -44,5 +47,12 @@
     "react-native-screens": "^4.22.0",
     "react-native-web": "~0.19.10",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.29.0",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "jest": "^30.2.0",
+    "react-test-renderer": "^19.2.4"
   }
 }

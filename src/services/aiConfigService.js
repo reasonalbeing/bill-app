@@ -87,7 +87,7 @@ export const API_PROVIDERS = {
 };
 
 // 默认配置
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG = {
   provider: 'siliconflow',
   apiKey: '',
   endpoint: API_PROVIDERS.siliconflow.defaultEndpoint,
