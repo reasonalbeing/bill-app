@@ -11,8 +11,8 @@ import AIConfigScreen from '../components/settings/AIConfigScreen';
 import AIChatScreen from '../components/ai/AIChatScreen';
 import BackupScreen from '../components/settings/BackupScreen';
 import TransactionDetailScreen from '../components/transactions/TransactionDetailScreen';
-import AdvancedFilterScreen from '../components/statistics/AdvancedFilterScreen';
-import CustomBudgetRulesScreen from '../components/budget/CustomBudgetRulesScreen';
+// import AdvancedFilterScreen from '../components/statistics/AdvancedFilterScreen';
+// import CustomBudgetRulesScreen from '../components/budget/CustomBudgetRulesScreen';
 import StatisticsRulesScreen from '../components/settings/StatisticsRulesScreen';
 import OCRScreen from '../components/ocr/OCRScreen';
 
@@ -61,7 +61,7 @@ export default function AppNavigator() {
           component={TransactionDetailScreen} 
           options={{ headerShown: true, headerTitle: '交易详情' }}
         />
-        <Stack.Screen 
+        {/* <Stack.Screen 
           name="AdvancedFilter" 
           component={AdvancedFilterScreen} 
           options={{ headerShown: true, headerTitle: '高级筛选' }}
@@ -70,7 +70,7 @@ export default function AppNavigator() {
           name="CustomBudgetRules" 
           component={CustomBudgetRulesScreen} 
           options={{ headerShown: true, headerTitle: '自定义预算规则' }}
-        />
+        /> */}
         <Stack.Screen 
           name="StatisticsRules" 
           component={StatisticsRulesScreen} 
