@@ -7,7 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Platform, Alert } from 'react-native';
-import { getDatabase } from '../database/database';
+import { getDatabase } from '../config/database';
 
 // 备份文件存储目录
 const BACKUP_DIRECTORY = FileSystem.documentDirectory + 'backups/';
