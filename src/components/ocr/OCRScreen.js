@@ -240,6 +240,7 @@ export default function OCRScreen({ navigation }) {
             <TouchableOpacity
               style={styles.captureButton}
               onPress={handleCapture}
+              testID="capture-button"
             >
               <View style={styles.captureButtonInner} />
             </TouchableOpacity>
@@ -251,7 +252,7 @@ export default function OCRScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="ocr-screen">
       {/* 主界面 */}
       {!capturedImage ? (
         <View style={styles.mainContainer}>
@@ -290,7 +291,7 @@ export default function OCRScreen({ navigation }) {
       ) : (
         /* 预览界面 */
         <View style={styles.previewContainer}>
-          <Image source={{ uri: capturedImage }} style={styles.previewImage} />
+          <Image source={{ uri: capturedImage }} style={styles.previewImage} testID="preview-image" />
           
           {isProcessing ? (
             <View style={styles.processingOverlay}>

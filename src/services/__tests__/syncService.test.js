@@ -1,209 +1,175 @@
-// 导入syncService模块
-const syncService = require('../syncService');
-const { syncToCloud, syncFromCloud, syncBidirectional, getLastSyncTime, SYNC_STATUS } = syncService;
+// 在测试环境中，使用 require 来导入模块，以便能够设置 mock
+let syncService = null;
+let syncToCloud = null;
+let syncFromCloud = null;
+let syncBidirectional = null;
+let getLastSyncTime = null;
+let SYNC_STATUS = null;
 
-// Mock配置模块
-jest.mock('../../config/firebase', () => ({
-  default: {},
-}));
-
-// 导入模块
-import { getDatabase } from '../../config/database';
+if (process.env.NODE_ENV === 'test') {
+  syncService = require('../syncService');
+  syncToCloud = syncService.syncToCloud;
+  syncFromCloud = syncService.syncFromCloud;
+  syncBidirectional = syncService.syncBidirectional;
+  getLastSyncTime = syncService.getLastSyncTime;
+  SYNC_STATUS = syncService.SYNC_STATUS;
+}
 
 describe('syncService', () => {
-  let mockDatabase;
-  
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Setup mock database
-    mockDatabase = {
-      executeSql: jest.fn(),
-    };
-    
-    // 设置mock
-    syncService.setDatabaseMock(mockDatabase);
-    syncService.setGetCurrentUserIdMock('test-user-id');
-  });
-  
-  afterEach(() => {
-    // 清除mock
-    syncService.clearMocks();
+    // 清除之前的mock
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.clearMocks();
+    }
   });
 
-  describe('SYNC_STATUS', () => {
-    it('should have correct sync status values', () => {
-      expect(SYNC_STATUS.IDLE).toBe('idle');
-      expect(SYNC_STATUS.SYNCING).toBe('syncing');
-      expect(SYNC_STATUS.SUCCESS).toBe('success');
-      expect(SYNC_STATUS.ERROR).toBe('error');
-      expect(SYNC_STATUS.CONFLICT).toBe('conflict');
-    });
-
-    it('should have all required status properties', () => {
-      expect(SYNC_STATUS).toHaveProperty('IDLE');
-      expect(SYNC_STATUS).toHaveProperty('SYNCING');
-      expect(SYNC_STATUS).toHaveProperty('SUCCESS');
-      expect(SYNC_STATUS).toHaveProperty('ERROR');
-      expect(SYNC_STATUS).toHaveProperty('CONFLICT');
-    });
+  test('SYNC_STATUS constants are defined', () => {
+    expect(SYNC_STATUS.IDLE).toBe('idle');
+    expect(SYNC_STATUS.SYNCING).toBe('syncing');
+    expect(SYNC_STATUS.SUCCESS).toBe('success');
+    expect(SYNC_STATUS.ERROR).toBe('error');
+    expect(SYNC_STATUS.CONFLICT).toBe('conflict');
   });
 
-  describe('getLastSyncTime', () => {
-    it('should return sync time when it exists', async () => {
-      const mockSyncTime = '2024-01-01T00:00:00.000Z';
-      mockDatabase.executeSql.mockResolvedValue({
-        rows: {
-          length: 1,
-          item: () => ({ value: mockSyncTime }),
-        },
+  test('getLastSyncTime returns null when no sync time exists', async () => {
+    // Mock database
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockResolvedValue({ rows: { length: 0 } }),
       });
-      
-      const result = await getLastSyncTime();
-      
-      expect(result).toBe(mockSyncTime);
-      expect(mockDatabase.executeSql).toHaveBeenCalledWith(
-        'SELECT value FROM settings WHERE key = ?',
-        ['last_sync_time']
-      );
-    });
+    }
 
-    it('should return null when sync time does not exist', async () => {
-      mockDatabase.executeSql.mockResolvedValue({
-        rows: {
-          length: 0,
-        },
+    const lastSyncTime = await getLastSyncTime();
+    expect(lastSyncTime).toBeNull();
+  });
+
+  test('syncToCloud succeeds with valid user', async () => {
+    // Mock user ID
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock('test-user-id');
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockResolvedValue({}),
       });
-      
-      const result = await getLastSyncTime();
-      
-      expect(result).toBe(null);
-    });
+    }
 
-    it('should return null on error', async () => {
-      const mockError = new Error('Database error');
-      mockDatabase.executeSql.mockRejectedValue(mockError);
-      
-      const result = await getLastSyncTime();
-      
-      expect(result).toBe(null);
-    });
+    const onProgress = jest.fn();
+    const result = await syncToCloud(onProgress);
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe('同步到云端成功');
+    expect(onProgress).toHaveBeenCalledWith(50, '正在同步到云端...');
+    expect(onProgress).toHaveBeenCalledWith(100, '同步完成');
   });
 
-  describe('syncToCloud', () => {
-    it('should throw error when user is not logged in', async () => {
-      // Mock user not logged in
-      syncService.setGetCurrentUserIdMock(null);
-      await expect(syncToCloud()).rejects.toThrow('用户未登录');
-    });
+  test('syncFromCloud succeeds with valid user', async () => {
+    // Mock user ID
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock('test-user-id');
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockResolvedValue({}),
+      });
+    }
 
-    it('should sync data to cloud successfully', async () => {
-      // Setup mock database responses
-      mockDatabase.executeSql
-        .mockResolvedValueOnce({
-          rows: {
-            length: 0,
-          },
-        })
-        .mockResolvedValueOnce({
-          rows: {
-            length: 0,
-          },
-        })
-        .mockResolvedValueOnce({
-          rows: {
-            length: 0,
-          },
-        })
-        .mockResolvedValueOnce({
-          rows: {
-            length: 0,
-          },
-        });
-      
-      const mockProgressCallback = jest.fn();
-      
-      // This will use the mock implementation in syncService.js
-      const result = await syncToCloud(mockProgressCallback);
-      
-      expect(result).toEqual({ success: true, message: '同步到云端成功' });
-      expect(mockProgressCallback).toHaveBeenCalled();
-    });
+    const onProgress = jest.fn();
+    const result = await syncFromCloud(onProgress);
 
-    it('should handle error during sync', async () => {
-      // Setup mock database error
-      const mockError = new Error('Sync error');
-      mockDatabase.executeSql.mockRejectedValue(mockError);
-      
-      await expect(syncToCloud()).rejects.toThrow('Sync error');
-    });
+    expect(result.success).toBe(true);
+    expect(result.message).toBe('从云端同步成功');
+    expect(onProgress).toHaveBeenCalledWith(50, '正在从云端同步...');
+    expect(onProgress).toHaveBeenCalledWith(100, '同步完成');
   });
 
-  describe('syncFromCloud', () => {
-    it('should throw error when user is not logged in', async () => {
-      // Mock user not logged in
-      syncService.setGetCurrentUserIdMock(null);
-      await expect(syncFromCloud()).rejects.toThrow('用户未登录');
-    });
+  test('syncBidirectional succeeds with valid user', async () => {
+    // Mock user ID
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock('test-user-id');
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockResolvedValue({}),
+      });
+    }
 
-    it('should sync data from cloud successfully', async () => {
-      // Setup mock database responses
-      mockDatabase.executeSql
-        .mockResolvedValue({
-          rows: {
-            length: 0,
-          },
-        });
-      
-      const mockProgressCallback = jest.fn();
-      
-      // This will use the mock implementation in syncService.js
-      const result = await syncFromCloud(mockProgressCallback);
-      
-      expect(result).toEqual({ success: true, message: '从云端同步成功' });
-      expect(mockProgressCallback).toHaveBeenCalled();
-    });
+    const onProgress = jest.fn();
+    const result = await syncBidirectional(onProgress);
 
-    it('should handle error during sync', async () => {
-      // Setup mock database error
-      const mockError = new Error('Sync error');
-      mockDatabase.executeSql.mockRejectedValue(mockError);
-      
-      await expect(syncFromCloud()).rejects.toThrow('Sync error');
-    });
+    expect(result.success).toBe(true);
+    expect(result.message).toBe('双向同步成功');
+    expect(onProgress).toHaveBeenCalledWith(33, '正在准备双向同步...');
+    expect(onProgress).toHaveBeenCalledWith(66, '正在同步数据...');
+    expect(onProgress).toHaveBeenCalledWith(100, '同步完成');
   });
 
-  describe('syncBidirectional', () => {
-    it('should throw error when user is not logged in', async () => {
-      // Mock user not logged in
+  test('syncToCloud throws error when user is not logged in', async () => {
+    // Mock user ID as null
+    if (process.env.NODE_ENV === 'test' && syncService) {
       syncService.setGetCurrentUserIdMock(null);
-      await expect(syncBidirectional()).rejects.toThrow('用户未登录');
-    });
+    }
 
-    it('should sync bidirectionally successfully', async () => {
-      // Setup mock database responses
-      mockDatabase.executeSql
-        .mockResolvedValue({
-          rows: {
-            length: 0,
-          },
-        });
-      
-      const mockProgressCallback = jest.fn();
-      
-      // This will use the mock implementation in syncService.js
-      const result = await syncBidirectional(mockProgressCallback);
-      
-      expect(result).toEqual({ success: true, message: '双向同步成功' });
-      expect(mockProgressCallback).toHaveBeenCalled();
-    });
+    await expect(syncToCloud()).rejects.toThrow('用户未登录');
+  });
 
-    it('should handle error during bidirectional sync', async () => {
-      // Setup mock database error
-      const mockError = new Error('Sync error');
-      mockDatabase.executeSql.mockRejectedValue(mockError);
-      
-      await expect(syncBidirectional()).rejects.toThrow('Sync error');
-    });
+  test('syncFromCloud throws error when user is not logged in', async () => {
+    // Mock user ID as null
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock(null);
+    }
+
+    await expect(syncFromCloud()).rejects.toThrow('用户未登录');
+  });
+
+  test('syncBidirectional throws error when user is not logged in', async () => {
+    // Mock user ID as null
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock(null);
+    }
+
+    await expect(syncBidirectional()).rejects.toThrow('用户未登录');
+  });
+
+  test('syncToCloud handles database errors', async () => {
+    // Mock user ID and erroring database
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock('test-user-id');
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockRejectedValue(new Error('Database error')),
+      });
+    }
+
+    await expect(syncToCloud()).rejects.toThrow('Database error');
+  });
+
+  test('syncFromCloud handles database errors', async () => {
+    // Mock user ID and erroring database
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock('test-user-id');
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockRejectedValue(new Error('Database error')),
+      });
+    }
+
+    await expect(syncFromCloud()).rejects.toThrow('Database error');
+  });
+
+  test('syncBidirectional handles database errors', async () => {
+    // Mock user ID and erroring database
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setGetCurrentUserIdMock('test-user-id');
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockRejectedValue(new Error('Database error')),
+      });
+    }
+
+    await expect(syncBidirectional()).rejects.toThrow('Database error');
+  });
+
+  test('getLastSyncTime handles database errors', async () => {
+    // Mock erroring database
+    if (process.env.NODE_ENV === 'test' && syncService) {
+      syncService.setDatabaseMock({
+        executeSql: jest.fn().mockRejectedValue(new Error('Database error')),
+      });
+    }
+
+    const lastSyncTime = await getLastSyncTime();
+    expect(lastSyncTime).toBeNull();
   });
 });

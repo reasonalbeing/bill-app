@@ -383,5 +383,36 @@ describe('BudgetRepository', () => {
         ])
       );
     });
+
+    it('should handle custom recurring budget', async () => {
+      const mockBudget = {
+        id: 1,
+        user_id: 1,
+        amount: 2000,
+        category_id: 2,
+        start_date: '2024-01-01',
+        end_date: '2024-01-15',
+        recurring: 'custom',
+        custom_recurring: {
+          frequency: 'daily',
+          interval: 15
+        },
+        description: 'Custom budget',
+      };
+      mockDb.getFirstAsync.mockResolvedValue(mockBudget);
+      mockDb.runAsync.mockResolvedValue({ lastInsertRowId: 2 });
+
+      const result = await BudgetRepository.createRecurringBudget(1);
+
+      expect(result).toBe(2);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO budgets'),
+        expect.arrayContaining([
+          1, 2000, 2,
+          '2024-01-16', // 开始日期加15天
+          'custom', 'Custom budget',
+        ])
+      );
+    });
   });
 });

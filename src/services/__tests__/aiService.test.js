@@ -77,6 +77,102 @@ describe('aiService', () => {
       expect(result.content).toBe('Hello, how can I help?');
     });
 
+    it('should send message to openai successfully', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hello from OpenAI!' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 20 },
+        }),
+      });
+
+      const result = await sendMessageToAI([{ role: 'user', content: 'Hello' }]);
+
+      expect(result.content).toBe('Hello from OpenAI!');
+    });
+
+    it('should send message to anthropic successfully', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'anthropic',
+        endpoint: 'https://api.anthropic.com/v1',
+        model: 'claude-3-opus',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          content: [{ text: 'Hello from Claude!' }],
+          usage: { input_tokens: 10, output_tokens: 20 },
+        }),
+      });
+
+      const result = await sendMessageToAI([{ role: 'user', content: 'Hello' }]);
+
+      expect(result.content).toBe('Hello from Claude!');
+    });
+
+    it('should send message to baidu successfully', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'baidu',
+        endpoint: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1',
+        model: 'ernie-bot-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hello from Baidu!' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 20 },
+        }),
+      });
+
+      const result = await sendMessageToAI([{ role: 'user', content: 'Hello' }]);
+
+      expect(result.content).toBe('Hello from Baidu!');
+    });
+
+    it('should send message to aliyun successfully', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'aliyun',
+        endpoint: 'https://dashscope.aliyuncs.com/api/v1',
+        model: 'qwen-max',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output: { text: 'Hello from Aliyun!' },
+          usage: { input_tokens: 10, output_tokens: 20 },
+        }),
+      });
+
+      const result = await sendMessageToAI([{ role: 'user', content: 'Hello' }]);
+
+      expect(result.content).toBe('Hello from Aliyun!');
+    });
+
     it('should throw error on API failure', async () => {
       getAIConfig.mockResolvedValue({
         isEnabled: true,
@@ -94,6 +190,46 @@ describe('aiService', () => {
       });
 
       await expect(sendMessageToAI([{ role: 'user', content: 'Hello' }])).rejects.toThrow('API请求失败');
+    });
+
+    it('should handle network errors', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockRejectedValue(new Error('Network error'));
+
+      await expect(sendMessageToAI([{ role: 'user', content: 'Hello' }])).rejects.toThrow('Network error');
+    });
+
+    it('should handle empty response', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: '' } }],
+          usage: {},
+        }),
+      });
+
+      const result = await sendMessageToAI([{ role: 'user', content: 'Hello' }]);
+
+      expect(result.content).toBe('');
     });
   });
 
@@ -127,6 +263,62 @@ describe('aiService', () => {
       expect(result.data.amount).toBe(15);
     });
 
+    it('should handle need_more_info action', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: '{"action": "need_more_info", "missing": ["amount"], "message": "请告诉我金额是多少？"}',
+            },
+          }],
+        }),
+      });
+
+      const result = await parseNaturalLanguage('吃饭', []);
+
+      expect(result.action).toBe('need_more_info');
+      expect(result.missing).toContain('amount');
+    });
+
+    it('should handle non-JSON response as reply', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: 'This is a plain text response',
+            },
+          }],
+        }),
+      });
+
+      const result = await parseNaturalLanguage('Hello', []);
+
+      expect(result.action).toBe('reply');
+      expect(result.message).toBe('This is a plain text response');
+    });
+
     it('should handle error gracefully', async () => {
       getAIConfig.mockRejectedValue(new Error('Network error'));
 
@@ -134,6 +326,33 @@ describe('aiService', () => {
 
       expect(result.action).toBe('error');
       expect(result.message).toBe('解析失败，请重试或手动输入');
+    });
+
+    it('should handle invalid JSON response', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: 'Invalid JSON { content',
+            },
+          }],
+        }),
+      });
+
+      const result = await parseNaturalLanguage('test', []);
+
+      expect(result.action).toBe('reply');
     });
   });
 
@@ -169,12 +388,71 @@ describe('aiService', () => {
       expect(result.action).toBe('analysis');
     });
 
+    it('should handle empty transactions', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: 'No transaction data available.',
+            },
+          }],
+        }),
+      });
+
+      const result = await analyzeSpending([], 'What did I spend?');
+
+      expect(result.action).toBe('analysis');
+    });
+
     it('should handle error gracefully', async () => {
       getAIConfig.mockRejectedValue(new Error('API error'));
 
       const result = await analyzeSpending([], 'test');
 
       expect(result.action).toBe('error');
+    });
+
+    it('should handle mixed transaction types', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: 'Analysis of mixed transactions',
+            },
+          }],
+        }),
+      });
+
+      const transactions = [
+        { type: 'expense', amount: 100, category_name: 'Food' },
+        { type: 'income', amount: 5000, category_name: 'Salary' },
+      ];
+
+      const result = await analyzeSpending(transactions, 'Analyze my spending');
+
+      expect(result.action).toBe('analysis');
     });
   });
 
@@ -203,6 +481,33 @@ describe('aiService', () => {
 
       const transactions = [{ type: 'expense', amount: 100 }];
       const result = await getBudgetAdvice(transactions);
+
+      expect(result.action).toBe('advice');
+    });
+
+    it('should handle empty transactions', async () => {
+      getAIConfig.mockResolvedValue({
+        isEnabled: true,
+        apiKey: 'test-key',
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: 'Start tracking your expenses',
+            },
+          }],
+        }),
+      });
+
+      const result = await getBudgetAdvice([]);
 
       expect(result.action).toBe('advice');
     });

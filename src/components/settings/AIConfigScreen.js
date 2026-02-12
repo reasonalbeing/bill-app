@@ -130,7 +130,7 @@ export default function AIConfigScreen() {
   };
 
   // 获取当前提供商信息
-  const currentProvider = API_PROVIDERS[config.provider];
+  const currentProvider = API_PROVIDERS[config.provider] || API_PROVIDERS.siliconflow;
 
   // 渲染加载状态
   if (isLoading) {

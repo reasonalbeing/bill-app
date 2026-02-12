@@ -294,5 +294,31 @@ describe('TransactionRepository', () => {
         [1, 'expense']
       );
     });
+
+    it('should work with only start date', async () => {
+      mockDb.getAllAsync.mockResolvedValue([]);
+
+      await TransactionRepository.getPlatformStats(1, {
+        startDate: '2024-01-01',
+      });
+
+      expect(mockDb.getAllAsync).toHaveBeenCalledWith(
+        expect.stringContaining('AND date >= ?'),
+        expect.arrayContaining([1, 'expense', '2024-01-01'])
+      );
+    });
+
+    it('should work with only end date', async () => {
+      mockDb.getAllAsync.mockResolvedValue([]);
+
+      await TransactionRepository.getPlatformStats(1, {
+        endDate: '2024-01-31',
+      });
+
+      expect(mockDb.getAllAsync).toHaveBeenCalledWith(
+        expect.stringContaining('AND date <= ?'),
+        expect.arrayContaining([1, 'expense', '2024-01-31'])
+      );
+    });
   });
 });
